@@ -1,0 +1,86 @@
+# Build + install-test: rewrap upstream DEB with Fedora spec
+name: localsend Fedora RPM build + install test
+on: workflow_dispatch
+env:
+  REPO_DEV: localsend
+  REPO_NAME: localsend
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    container: fedora:44
+    steps:
+      # fedora:44 ships no git, so actions/checkout would silently fall back to
+      # downloading a source tarball and leave no .git behind.
+      - name: Install git
+        run: sudo dnf install -y -q git
+      - name: Checkout local
+        uses: actions/checkout@v6.0.2
+        with:
+          repository: ${{ github.repository }}
+      # Steps run as root inside the container while the bind-mounted workspace
+      # is owned by the runner user (uid 1001), so git rejects the repository as
+      # dubiously owned. actions/checkout only records safe.directory in a
+      # temporary global config that it reverts.
+      - name: Mark workspace safe for git
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+      - name: Install dependencies
+        run: sudo dnf install -y -q git gawk jq curl rpm-build rpmdevtools binutils zstd chrpath cpio desktop-file-utils appstream rpmlint
+      - name: Get latest version
+        id: step_version
+        run: |
+          latest_release_tag=$(curl -fsSL -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" -H "Accept: application/vnd.github+json" https://api.github.com/repos/$REPO_DEV/$REPO_NAME/releases/latest | jq -r '.tag_name // empty')
+          if [ -z "$latest_release_tag" ]; then echo "ERROR: tag empty"; exit 1; fi
+          version_no_v=$(echo "$latest_release_tag" | sed 's/^v//')
+          echo "VERSION_NO_V=$version_no_v" >> "$GITHUB_OUTPUT"
+      - name: Patch spec and metainfo version
+        run: |
+          sed -i "s/^Version:.*/Version:        ${{ steps.step_version.outputs.VERSION_NO_V }}/" specs/localsend.spec
+          sed -i "s|<release version=\"[^\"]*\" date=\"[^\"]*\"|<release version=\"${{ steps.step_version.outputs.VERSION_NO_V }}\" date=\"$(date +%F)\"|" sources/org.localsend.localsend_app.metainfo.xml
+          head -12 specs/localsend.spec
+      - name: Validate curated AppStream metadata
+        run: |
+          appstreamcli validate --no-net sources/org.localsend.localsend_app.metainfo.xml
+      - name: Build RPM locally
+        run: |
+          rpmdev-setuptree
+          VERSION_NO_V="${{ steps.step_version.outputs.VERSION_NO_V }}"
+          # spectool fetches the upstream DEB (Source0) and LICENSE (Source1)
+          # for the exact release tag. No fallback: a failed fetch fails the
+          # build.
+          cp sources/org.localsend.localsend_app.metainfo.xml $HOME/rpmbuild/SOURCES/
+          cp specs/localsend.spec $HOME/rpmbuild/SPECS/
+          cd $HOME/rpmbuild/SPECS
+          spectool -g -R localsend.spec
+          rpmbuild -ba localsend.spec 2>&1 | tail -15
+          ls -lh $HOME/rpmbuild/RPMS/x86_64/
+      - name: Inspect built RPM Requires
+        run: |
+          rpm_file=$(ls $HOME/rpmbuild/RPMS/x86_64/localsend-*.x86_64.rpm | grep -v debug | head -1)
+          echo "=== Built RPM: $rpm_file ==="
+          rpm -qpR "$rpm_file"
+          echo "REQUIRES_OUTPUT_END"
+      - name: Validate packaged desktop and AppStream metadata
+        run: |
+          rpm_file=$(ls $HOME/rpmbuild/RPMS/x86_64/localsend-*.x86_64.rpm | grep -v debug | head -1)
+          rm -rf /tmp/rpmbuild-check
+          mkdir -p /tmp/rpmbuild-check
+          cd /tmp/rpmbuild-check
+          rpm2cpio "$rpm_file" | cpio -idmu --quiet
+          desktop-file-validate usr/share/applications/localsend_app.desktop
+          appstreamcli validate --no-net usr/share/metainfo/org.localsend.localsend_app.metainfo.xml
+      - name: Run rpmlint
+        run: |
+          rpm_file=$(ls $HOME/rpmbuild/RPMS/x86_64/localsend-*.x86_64.rpm | grep -v debug | head -1)
+          # rpmlintrc documents every inherent blob finding (private Flutter
+          # libs under /opt, $ORIGIN runpaths, bare SONAMEs, unstripped
+          # prebuilt, dictionary misses, no docs/man page by design). Anything
+          # else breaks this step.
+          rpmlint -r "$GITHUB_WORKSPACE/rpmlintrc" "$rpm_file"
+      - name: Install-test the rebuilt RPM
+        run: |
+          rpm_file=$(ls $HOME/rpmbuild/RPMS/x86_64/localsend-*.x86_64.rpm | grep -v debug | head -1)
+          echo "=== Installing $rpm_file (expect ayatana/gtk libs pulled) ==="
+          dnf in -y "$rpm_file" 2>&1 | tail -30
+          rpm -q localsend
+          rpm -V localsend
+          echo "### Install test passed :heavy_check_mark:" >> $GITHUB_STEP_SUMMARY

@@ -1,0 +1,38 @@
+# Delete all but the most recent run for each localsend workflow
+name: Cleanup old workflow runs
+on:
+  schedule:
+    - cron: "30 0 * * *"
+  workflow_dispatch:
+permissions:
+  actions: write
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      REPO: ${{ github.repository }}
+    steps:
+      - name: Keep only the latest run per workflow
+        run: |
+          for wf in localsend-ci.yml localsend-rpmbuild-test.yml cleanup.yml; do
+            echo "== $wf =="
+            # Only terminal-state runs are deletable; in-progress/queued runs
+            # (e.g. the 00:00 UTC CI still running at 00:30) must be skipped.
+            ids=$(gh run list --repo "$REPO" --workflow "$wf" --limit 100 \
+              --json databaseId,status \
+              --jq '.[] | select(.status != "queued" and .status != "in_progress" and .status != "action_required") | .databaseId')
+            # grep -c exits 1 on zero matches (e.g. this workflow's only run
+            # is itself, still in progress) — must not fail the step.
+            total=$(printf '%s\n' "$ids" | grep -c . || true)
+            echo "found $total deletable run(s)"
+            if [ "$total" -le 1 ]; then
+              echo "nothing to delete"
+              continue
+            fi
+            # gh run list is newest-first; keep the first, delete the rest
+            printf '%s\n' "$ids" | tail -n +2 | while read -r id; do
+              echo "deleting run $id"
+              gh run delete "$id" --repo "$REPO" || true
+            done
+          done

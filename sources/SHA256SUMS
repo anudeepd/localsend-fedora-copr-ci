@@ -1,0 +1,7 @@
+# SHA256SUMS for the upstream LocalSend release artifact (LocalSend-<version>-linux-x86-64.deb).
+# Format: <sha256>  <version>
+# Upstream publishes no checksums, so CI records each version's hash on first
+# sight (trust-on-first-use) and fails subsequent builds if the downloaded
+# artifact does not match the recorded hash.
+
+cc42a4f3eacdcb25ec31f0016b1272acb003145ab30484db8965450e20c72cd2  1.18.2

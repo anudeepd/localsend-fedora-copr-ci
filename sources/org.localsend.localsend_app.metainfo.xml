@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Curated AppStream metadata for the localsend COPR rewrap.
+     Upstream ships no AppStream metadata (neither the DEB nor the tarball
+     carries any). The id follows Flathub's org.localsend.localsend_app and
+     the launchable points at the upstream desktop file, which is kept as-is.
+     Screenshots mirror Flathub. CI patches the <release> version/date on
+     each new upstream release. -->
+<component type="desktop-application">
+  <id>org.localsend.localsend_app</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>Apache-2.0</project_license>
+  <name>LocalSend</name>
+  <summary>Share files to nearby devices</summary>
+  <description>
+    <p>LocalSend is an open source cross-platform alternative to AirDrop. It allows you to send files and messages over the local network.</p>
+    <p>In contrast to most alternatives, no external servers are needed. Everything happens locally in your wifi network.</p>
+  </description>
+  <categories>
+    <category>Utility</category>
+  </categories>
+  <developer id="org.localsend">
+    <name>Tien Do Nam</name>
+  </developer>
+  <url type="homepage">https://localsend.org/</url>
+  <url type="bugtracker">https://github.com/localsend/localsend/issues</url>
+  <url type="vcs-browser">https://github.com/localsend/localsend</url>
+  <launchable type="desktop-id">localsend_app.desktop</launchable>
+  <provides>
+    <binary>localsend_app</binary>
+  </provides>
+  <releases>
+    <release version="1.18.2" date="2026-08-21"/>
+  </releases>
+  <content_rating type="oars-1.1"/>
+  <screenshots>
+    <screenshot type="default">
+      <image>https://raw.githubusercontent.com/flathub/org.localsend.localsend_app/refs/heads/master/Media/Receive.png</image>
+      <caption>Receiving interface</caption>
+    </screenshot>
+    <screenshot>
+      <image>https://raw.githubusercontent.com/flathub/org.localsend.localsend_app/refs/heads/master/Media/send.png</image>
+      <caption>Sending interface</caption>
+    </screenshot>
+    <screenshot>
+      <image>https://raw.githubusercontent.com/flathub/org.localsend.localsend_app/refs/heads/master/Media/settings.png</image>
+      <caption>Settings interface</caption>
+    </screenshot>
+  </screenshots>
+</component>

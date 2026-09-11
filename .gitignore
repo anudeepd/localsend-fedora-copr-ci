@@ -1,0 +1,10 @@
+node_modules/
+dist/
+target/
+*.rpm
+*.tar.gz
+*.deb
+.DS_Store
+*~
+.vscode/
+.idea/

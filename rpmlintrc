@@ -1,0 +1,35 @@
+# GUI app; upstream ships no man page, and the doc-free payload is
+# intentional for this COPR rewrap.
+addFilter("no-manual-page-for-binary")
+addFilter("no-documentation")
+
+# The prebuilt upstream binaries carry .symtab (unstripped) by design; see
+# the rationale next to %global debug_package %{nil} in specs/localsend.spec.
+addFilter("unstripped-binary-or-object")
+# "rewraps" and "prebuilt" appear in %description; rpmlint's dictionary has
+# no entry for them.
+addFilter("spelling-error .*rewraps")
+addFilter("spelling-error .*prebuilt")
+# /usr/bin/localsend_app is a symlink to the true ELF in
+# /opt/localsend_app (declared in %install instead of upstream's postinst
+# scriptlet); rpmlint only matches regular files against Exec=, so the
+# desktop-file/binary pairing needs this carve-out.
+addFilter("desktopfile-without-binary")
+# The prebuilt Flutter engine calls SSL_CTX_set_cipher_list directly instead
+# of going through Fedora's crypto policy; inherent to the upstream blob and
+# unfixable without rebuilding it from source.
+addFilter("crypto-policy-non-compliance-openssl")
+# Upstream's Flutter plugin libs under /opt/localsend_app/lib are private
+# (loaded via $ORIGIN RUNPATHs, not the system loader path): exec-bit-less
+# libs with bare SONAMEs and $ORIGIN RUNPATHs are all by design and required
+# for the app to find its bundled libs. Modes and layout are kept as upstream
+# ships them. These filters cover the inherent findings on the blob payload.
+addFilter("shared-library-not-executable")
+addFilter("no-soname")
+addFilter("invalid-soname")
+addFilter("missing-gnu-hash-section")
+addFilter("binary-or-shlib-defines-rpath")
+# /opt/localsend_app is the upstream Flutter bundle layout; the blob must
+# ship with its paths intact (COPR-only rewrap, never eligible for official
+# Fedora).
+addFilter("dir-or-file-in-opt")
