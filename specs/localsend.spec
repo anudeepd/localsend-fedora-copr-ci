@@ -1,12 +1,27 @@
-# Prebuilt foreign binary: no build-id or debuginfo can be produced, and
-# disabling the debug package also skips brp-strip, which would otherwise
-# rewrite the upstream blob. The binary ships as-is from the release DEB.
+# Prebuilt foreign binary: no build-id or debuginfo can be produced, so the
+# debug package is disabled. The payload ships as-is from the release DEB.
 %global debug_package %{nil}
 
+# NOTE (verified by local rpmbuild): %%global debug_package %%{nil} is what
+# makes the default ELF-rewriting brp hooks run, not what skips them —
+# Fedora's %%__os_install_post gates brp-strip / brp-strip-comment-note on
+# %%__debug_package being *undefined*. With them in place every ELF file in
+# the payload loses its .comment section, so the payload stops matching
+# upstream outside the documented chrpath delta below. brp-strip-lto and
+# brp-strip-static-archive are not gated at all. Empty all four so the only
+# remaining difference from the upstream DEB is the intended one. Set them to
+# %%{nil} rather than %%undefine'ing them: with rpm 6.0.2 %%undefine does not
+# mask brp-strip / brp-strip-comment-note (verified — the hooks still ran,
+# while %%undefine on the lto one did take effect).
+%global __brp_strip %{nil}
+%global __brp_strip_comment_note %{nil}
+%global __brp_strip_lto %{nil}
+%global __brp_strip_static_archive %{nil}
+
 # add-determinism's brp hook (add-det) would regenerate /usr/lib/.build-id
-# links from the blob's ELF build-id notes and otherwise normalize the
-# payload. The blob must ship byte-identical, so unset the hook (consistent
-# with %%global debug_package %%{nil} above).
+# links from the payload's ELF build-id notes and otherwise normalize the
+# payload. The payload must ship byte-identical apart from the chrpath delta,
+# so unset the hook.
 %undefine __brp_add_determinism
 
 # The bundled Flutter libs under /opt/localsend_app carry bare SONAMEs
@@ -124,5 +139,10 @@ appstreamcli validate --no-net %{buildroot}%{_metainfodir}/org.localsend.localse
 # %%changelog entry — Release bumps automatically and the NVR stays unique.
 
 %changelog
+* Sat Sep 12 2026 Anudeep D <anudeepd2@gmail.com> - 1.18.2-2
+- Keep the payload matching upstream apart from the chrpath delta: unset
+  Fedora's ELF-rewriting brp hooks (brp-strip, brp-strip-comment-note,
+  brp-strip-lto, brp-strip-static-archive) which drop .comment from every
+  bundled binary
 * Fri Sep 11 2026 Anudeep D <anudeepd2@gmail.com> - 1.18.2-1
 - Initial Fedora repackaging of upstream prebuilt DEB

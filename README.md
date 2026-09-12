@@ -33,10 +33,15 @@ Everything else follows the guidelines:
   version. `License: Apache-2.0` (SPDX) matches the upstream `LICENSE`.
   Nothing else is bundled: upstream payload plus license and curated metainfo.
 - `%global debug_package %{nil}` with an explicit rationale: the prebuilt
-  foreign binary cannot produce debuginfo, and disabling the debug package
-  also skips `brp-strip`, which would otherwise rewrite the upstream blob.
-  The `add-det` brp hook is disabled for the same reason: the blob must ship
-  byte-identical.
+  foreign binary cannot produce debuginfo, so the debug package is meaningless
+  for a rewrap. Note that this is what *enables* Fedora's ELF-rewriting brp
+  hooks rather than skipping them: `%__os_install_post` gates `brp-strip` and
+  `brp-strip-comment-note` on `%__debug_package` being undefined, and with
+  them active every ELF in the payload loses its `.comment` section.
+  `brp-strip-lto` and `brp-strip-static-archive` are not gated at all. All
+  four hooks plus `add-det` are emptied in the spec, so the only remaining
+  difference from the upstream DEB is the documented chrpath delta — and the
+  RPM build test workflow checks exactly that against the upstream payload.
 - The bundled Flutter libs under `/opt/localsend_app` carry bare SONAMEs
   (e.g. `libflutter_linux_gtk.so`). These are private names nothing in
   Fedora provides, so they stay provided by this package itself, satisfying

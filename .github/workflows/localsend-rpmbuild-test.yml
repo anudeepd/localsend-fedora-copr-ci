@@ -53,6 +53,27 @@ jobs:
           spectool -g -R localsend.spec
           rpmbuild -ba localsend.spec 2>&1 | tail -15
           ls -lh $HOME/rpmbuild/RPMS/x86_64/
+      - name: Verify the payload matches upstream except the chrpath delta
+        run: |
+          # The contract is that the DEB payload ships as upstream built it; the
+          # only intended delta is the chrpath RUNPATH removal loop in %prep.
+          # Fedora's default brp hooks rewrite any ELF they see, so without this
+          # check a silent macro change would only show up as a quietly
+          # different binary.
+          upstream=$(ls $HOME/rpmbuild/SOURCES/LocalSend-*-linux-x86-64.deb | head -1)
+          built=$(ls $HOME/rpmbuild/RPMS/x86_64/localsend-*.rpm | grep -v debug | head -1)
+          rm -rf /tmp/payload-upstream /tmp/payload-built
+          mkdir -p /tmp/payload-upstream /tmp/payload-built
+          (cd /tmp/payload-upstream && ar p "$upstream" data.tar.zst | tar -I zstd -x)
+          (cd /tmp/payload-built && rpm2cpio "$built" | cpio -idm --quiet)
+          # Only the plugin libs the %prep chrpath loop touches may differ.
+          drift=$(diff -rq /tmp/payload-upstream /tmp/payload-built 2>&1 | grep ' differ$' | grep -vE '/opt/localsend_app/lib/' || true)
+          if [ -n "$drift" ]; then
+            echo "ERROR: payload drifted from upstream:"
+            printf '%s\n' "$drift"
+            exit 1
+          fi
+          echo "### Payload matches upstream except the chrpath delta :heavy_check_mark:" >> $GITHUB_STEP_SUMMARY
       - name: Inspect built RPM Requires
         run: |
           rpm_file=$(ls $HOME/rpmbuild/RPMS/x86_64/localsend-*.x86_64.rpm | grep -v debug | head -1)
