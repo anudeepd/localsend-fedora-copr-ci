@@ -36,9 +36,9 @@ jobs:
   UpdateFedoraCOPR:
     needs: GetLatestVersion
     runs-on: ubuntu-latest
-    container: fedora:44
+    container: fedora:45
     steps:
-      # fedora:44 ships no git. Without it actions/checkout silently falls back
+      # fedora:45 ships no git. Without it actions/checkout silently falls back
       # to downloading a source tarball, leaving no .git for the checksum
       # commit/push below.
       - name: Install git

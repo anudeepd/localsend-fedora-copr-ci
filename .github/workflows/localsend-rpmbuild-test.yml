@@ -7,9 +7,9 @@ env:
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
-    container: fedora:44
+    container: fedora:45
     steps:
-      # fedora:44 ships no git, so actions/checkout would silently fall back to
+      # fedora:45 ships no git, so actions/checkout would silently fall back to
       # downloading a source tarball and leave no .git behind.
       - name: Install git
         run: sudo dnf install -y -q git
