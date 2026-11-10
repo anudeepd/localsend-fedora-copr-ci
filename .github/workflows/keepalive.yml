@@ -1,0 +1,29 @@
+name: Keepalive
+
+on:
+  schedule:
+    - cron: "17 3 1,15 * *"   # 1st and 15th, 03:17 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: keepalive
+  cancel-in-progress: false
+
+jobs:
+  keepalive:
+    if: github.repository_owner == 'anudeepd'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - name: Record activity
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          mkdir -p .github
+          date -u +%Y-%m-%dT%H:%M:%SZ > .github/keepalive.txt
+          git add .github/keepalive.txt
+          git commit -m "chore: keepalive [skip ci]"
+          git push

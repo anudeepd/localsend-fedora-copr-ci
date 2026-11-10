@@ -15,7 +15,7 @@ jobs:
     steps:
       - name: Keep only the latest run per workflow
         run: |
-          for wf in localsend-ci.yml localsend-rpmbuild-test.yml cleanup.yml; do
+          for wf in localsend-ci.yml localsend-rpmbuild-test.yml keepalive.yml cleanup.yml; do
             echo "== $wf =="
             # Only terminal-state runs are deletable; in-progress/queued runs
             # (e.g. the 00:00 UTC CI still running at 00:30) must be skipped.
